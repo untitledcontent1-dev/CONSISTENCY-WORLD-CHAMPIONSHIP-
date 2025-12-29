@@ -4,19 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Click Fix Test</title>
+<title>Aura Attendance</title>
 
 <style>
 body{
   background:#020617;
-  color:#fff;
+  color:#ffffff;
   font-family:system-ui;
   padding:20px;
 }
 .card{
   background:#0b1220;
   padding:20px;
-  border-radius:14px;
+  border-radius:16px;
+  margin-bottom:20px;
+}
+input{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  background:#020617;
+  border:1px solid #1e293b;
+  color:#fff;
+  border-radius:12px;
 }
 button{
   width:100%;
@@ -28,15 +38,16 @@ button{
   border:none;
   border-radius:12px;
   cursor:pointer;
-  pointer-events:auto;
 }
-input{
-  width:100%;
-  padding:14px;
-  margin-top:10px;
-  background:#020617;
-  border:1px solid #1e293b;
-  color:#fff;
+.row{
+  display:flex;
+  justify-content:space-between;
+  padding:10px 0;
+  border-bottom:1px solid #1e293b;
+}
+.rank{
+  color:#facc15;
+  font-weight:700;
 }
 </style>
 </head>
@@ -44,17 +55,75 @@ input{
 <body>
 
 <div class="card">
-  <h2>🔥 Button Click Test</h2>
-  <input id="name" placeholder="Enter name">
-  <button id="btn">CLICK ME</button>
-  <p id="out"></p>
+  <h2>🔥 Aura Attendance</h2>
+  <input id="name" placeholder="Enter your name">
+  <button id="presentBtn">✔ Present (+100 Aura)</button>
+  <p id="status"></p>
 </div>
 
+<div class="card">
+  <h2>🏆 Live Leaderboard</h2>
+  <div id="leader">Waiting for data…</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
-// 🔥 CLICK TEST (NO FIREBASE YET)
-document.getElementById("btn").addEventListener("click", () => {
-  document.getElementById("out").innerText = "✅ BUTTON CLICK DETECTED";
-  alert("Button click works");
+// 🔥 FIREBASE INIT
+firebase.initializeApp({
+  apiKey: "AIzaSyC46iMoVc2QbVBel39ykA7NiC3ZKmXZd-4",
+  databaseURL: "https://neet2026-bf3c6-default-rtdb.firebaseio.com"
+});
+
+const db = firebase.database();
+
+// ✅ SAFE CLICK HANDLER
+document.getElementById("presentBtn").addEventListener("click", () => {
+  const nameInput = document.getElementById("name");
+  const status = document.getElementById("status");
+  const n = nameInput.value.trim();
+
+  if(!n){
+    alert("Enter your name");
+    return;
+  }
+
+  status.innerText = "Marking present…";
+
+  db.ref("users/" + n).transaction(data => {
+    if(!data){
+      data = { aura: 0 };
+    }
+    data.aura += 100;
+    return data;
+  }).then(() => {
+    status.innerText = "✅ Present marked";
+  }).catch(e => {
+    status.innerText = "❌ Error: " + e.message;
+  });
+});
+
+// 🔴 REAL-TIME LEADERBOARD
+db.ref("users").on("value", snap => {
+  let arr = [];
+
+  snap.forEach(child => {
+    arr.push({
+      name: child.key,
+      aura: child.val().aura || 0
+    });
+  });
+
+  arr.sort((a,b) => b.aura - a.aura);
+
+  document.getElementById("leader").innerHTML = arr.map((u,i) => `
+    <div class="row">
+      <span class="rank">${i+1}.</span>
+      <span>${u.name}</span>
+      <span>${u.aura}</span>
+    </div>
+  `).join("");
 });
 </script>
 
