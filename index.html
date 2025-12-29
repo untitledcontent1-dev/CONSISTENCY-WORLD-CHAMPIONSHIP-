@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Attendance</title>
+
+<style>
+body{
+  background:#020617;
+  color:#ffffff;
+  font-family:system-ui;
+  padding:20px;
+}
+.card{
+  background:#0b1220;
+  padding:20px;
+  border-radius:14px;
+  margin-bottom:20px;
+}
+input,button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  font-size:16px;
+}
+button{
+  background:#22c55e;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+}
+.row{
+  display:flex;
+  justify-content:space-between;
+  padding:8px 0;
+  border-bottom:1px solid #1e293b;
+}
+.rank{color:#facc15;font-weight:700}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>🔥 Aura Attendance</h2>
+  <input id="name" placeholder="Enter name">
+  <button onclick="mark()">✔ Present</button>
+</div>
+
+<div class="card">
+  <h2>🏆 Live Leaderboard</h2>
+  <div id="leader">Waiting for data…</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+// 🔥 FIREBASE CONFIG (YOUR PROJECT)
+firebase.initializeApp({
+  apiKey: "AIzaSyC46iMoVc2QbVBel39ykA7NiC3ZKmXZd-4",
+  databaseURL: "https://neet2026-bf3c6-default-rtdb.firebaseio.com"
+});
+
+const db = firebase.database();
+
+// MARK PRESENT (ATOMIC)
+function mark(){
+  const n = name.value.trim();
+  if(!n) return alert("Enter name");
+
+  db.ref("users/"+n).transaction(d=>{
+    if(!d) d={score:0};
+    d.score += 1;
+    return d;
+  });
+}
+
+// REAL-TIME LEADERBOARD
+db.ref("users").on("value", snap=>{
+  let arr=[];
+  snap.forEach(s=>{
+    arr.push({name:s.key, score:s.val().score||0});
+  });
+
+  arr.sort((a,b)=>b.score-a.score);
+
+  leader.innerHTML = arr.map((u,i)=>`
+    <div class="row">
+      <span class="rank">${i+1}.</span>
+      <span>${u.name}</span>
+      <span>${u.score}</span>
+    </div>
+  `).join("");
+});
+</script>
+
+</body>
+</html>
