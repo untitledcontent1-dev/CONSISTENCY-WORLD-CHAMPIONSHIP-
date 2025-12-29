@@ -2,10 +2,29 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Test</title>
+  <title>Firebase Test</title>
 </head>
-<body style="background:#020617;color:white;font-family:system-ui">
-  <h1>✅ GitHub Pages is Working</h1>
-  <p>If you see this, hosting is correct.</p>
+<body style="background:#020617;color:white;font-family:system-ui;padding:20px">
+  <h2>🔥 Firebase GitHub Pages Test</h2>
+  <p id="msg">Testing Firebase…</p>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyC46iMoVc2QbVBel39ykA7NiC3ZKmXZd-4",
+  databaseURL: "https://neet2026-bf3c6-default-rtdb.firebaseio.com"
+});
+
+firebase.database().ref("githubPagesTest").set({
+  status: "working",
+  time: new Date().toString()
+}).then(()=>{
+  document.getElementById("msg").innerText = "✅ Firebase WRITE WORKED on GitHub Pages";
+}).catch(e=>{
+  document.getElementById("msg").innerText = "❌ Firebase Error: " + e.message;
+});
+</script>
 </body>
 </html>
