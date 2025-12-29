@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Aura Attendance</title>
 
 <style>
@@ -11,14 +10,19 @@ body{
   background:#020617;
   color:#ffffff;
   font-family:system-ui;
-  padding:20px;
+  padding:16px;
+  margin:0;
 }
 .card{
   background:#0b1220;
   padding:20px;
   border-radius:16px;
-  margin-bottom:20px;
+  margin-bottom:16px;
 }
+h2{margin:0;text-align:center}
+.note{font-size:12px;text-align:center;color:#94a3b8;margin-top:4px}
+#countdown{color:#ef4444;text-align:center;margin:8px 0}
+
 input{
   width:100%;
   padding:14px;
@@ -28,26 +32,60 @@ input{
   color:#fff;
   border-radius:12px;
 }
+
 button{
   width:100%;
   padding:16px;
   margin-top:12px;
-  font-size:18px;
+  font-size:17px;
   font-weight:700;
   background:#22c55e;
   border:none;
   border-radius:12px;
-  cursor:pointer;
 }
+
+button.locked{
+  background:#334155;
+  color:#94a3b8;
+}
+
 .row{
   display:flex;
   justify-content:space-between;
   padding:10px 0;
   border-bottom:1px solid #1e293b;
 }
-.rank{
-  color:#facc15;
-  font-weight:700;
+.rank{color:#facc15;font-weight:700}
+
+/* WEEK STRIP */
+.week{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:6px;
+  margin-top:10px;
+  font-size:12px;
+  text-align:center;
+}
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  margin:auto;
+}
+.p{background:#22c55e}
+.a{background:#ef4444}
+.f{background:#64748b}
+
+/* TOGGLE */
+.toggle{
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+.toggle button{
+  background:#1e293b;
+  color:#fff;
+  padding:10px;
 }
 </style>
 </head>
@@ -56,75 +94,150 @@ button{
 
 <div class="card">
   <h2>🔥 Aura Attendance</h2>
+  <div class="note">(No attendance after 11:00 AM)</div>
+  <div id="countdown">Time Left --</div>
+
+  <div id="week" class="week"></div>
+
   <input id="name" placeholder="Enter your name">
-  <button id="presentBtn">✔ Present (+100 Aura)</button>
-  <p id="status"></p>
+  <button id="presentBtn">✔ Present</button>
+  <div id="status" class="note"></div>
 </div>
 
 <div class="card">
-  <h2>🏆 Live Leaderboard</h2>
-  <div id="leader">Waiting for data…</div>
+  <h2>🏆 Leaderboard</h2>
+  <div class="toggle">
+    <button id="weeklyBtn">Weekly</button>
+    <button id="allBtn">All-Time</button>
+  </div>
+  <div id="leader"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-// 🔥 FIREBASE INIT
+// ---------- FIREBASE ----------
 firebase.initializeApp({
   apiKey: "AIzaSyC46iMoVc2QbVBel39ykA7NiC3ZKmXZd-4",
   databaseURL: "https://neet2026-bf3c6-default-rtdb.firebaseio.com"
 });
-
 const db = firebase.database();
 
-// ✅ SAFE CLICK HANDLER
-document.getElementById("presentBtn").addEventListener("click", () => {
-  const nameInput = document.getElementById("name");
-  const status = document.getElementById("status");
-  const n = nameInput.value.trim();
+// ---------- GLOBAL ----------
+let mode = "weekly";
+const now = new Date();
+const today = now.toISOString().slice(0,10);
+const hour = now.getHours();
 
-  if(!n){
-    alert("Enter your name");
+// ---------- COUNTDOWN ----------
+setInterval(()=>{
+  const exam = new Date("2026-05-03T09:00:00");
+  let s = Math.max(0, Math.floor((exam - new Date())/1000));
+  let d = Math.floor(s/86400);
+  let h = Math.floor((s%86400)/3600);
+  let m = Math.floor((s%3600)/60);
+  let sec = s%60;
+  countdown.innerText = `Time Left ${d}d ${h}h ${m}m ${sec}s`;
+},1000);
+
+// ---------- WEEK STRIP ----------
+function renderWeek(hist){
+  week.innerHTML="";
+  const monday=new Date();
+  monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+  const days=["M","T","W","T","F","S","S"];
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    const key=d.toISOString().slice(0,10);
+    let cls="f";
+    if(hist[key]==="present") cls="p";
+    if(hist[key]==="absent") cls="a";
+    week.innerHTML+=`
+      <div>${days[i]}<div class="dot ${cls}"></div></div>
+    `;
+  }
+}
+
+// ---------- PRESENT ----------
+presentBtn.addEventListener("click",()=>{
+  const n=name.value.trim();
+  if(!n) return alert("Enter name");
+
+  if(hour>=11){
+    status.innerText="❌ Attendance closed";
+    presentBtn.classList.add("locked");
     return;
   }
 
-  status.innerText = "Marking present…";
-
-  db.ref("users/" + n).transaction(data => {
-    if(!data){
-      data = { aura: 0 };
+  db.ref("users/"+n).transaction(d=>{
+    if(!d){
+      d={aura:0,weekly:0,streak:0,last:"",shield:false,history:{}};
     }
-    data.aura += 100;
-    return data;
-  }).then(() => {
-    status.innerText = "✅ Present marked";
-  }).catch(e => {
-    status.innerText = "❌ Error: " + e.message;
+
+    if(d.last===today) return d;
+
+    d.aura+=100;
+    d.weekly+=100;
+    d.streak+=1;
+    d.last=today;
+    d.history[today]="present";
+    if(d.streak<7) d.shield=false;
+
+    return d;
   });
+
+  status.innerText="✅ Present marked";
 });
 
-// 🔴 REAL-TIME LEADERBOARD
-db.ref("users").on("value", snap => {
-  let arr = [];
+// ---------- AUTO ABSENT ----------
+function autoAbsent(n,d){
+  if(d.last===today) return;
+  d.aura-=200;
+  d.weekly-=200;
+  if(d.streak>=7 && !d.shield){
+    d.shield=true;
+  }else{
+    d.streak=0;
+  }
+  d.last=today;
+  d.history[today]="absent";
+  db.ref("users/"+n).set(d);
+}
 
-  snap.forEach(child => {
+// ---------- LEADERBOARD ----------
+db.ref("users").on("value",snap=>{
+  let arr=[];
+  snap.forEach(u=>{
+    let d=u.val();
     arr.push({
-      name: child.key,
-      aura: child.val().aura || 0
+      name:u.key,
+      aura:d.aura||0,
+      weekly:d.weekly||0,
+      data:d
     });
+
+    if(hour>=11) autoAbsent(u.key,d);
+    if(u.key===name.value.trim()) renderWeek(d.history||{});
   });
 
-  arr.sort((a,b) => b.aura - a.aura);
+  arr.sort((a,b)=>
+    mode==="weekly" ? b.weekly-a.weekly : b.aura-a.aura
+  );
 
-  document.getElementById("leader").innerHTML = arr.map((u,i) => `
+  leader.innerHTML=arr.map((u,i)=>`
     <div class="row">
       <span class="rank">${i+1}.</span>
       <span>${u.name}</span>
-      <span>${u.aura}</span>
+      <span>${mode==="weekly"?u.weekly:u.aura}</span>
     </div>
   `).join("");
 });
+
+// ---------- TOGGLE ----------
+weeklyBtn.onclick=()=>mode="weekly";
+allBtn.onclick=()=>mode="all";
 </script>
 
 </body>
