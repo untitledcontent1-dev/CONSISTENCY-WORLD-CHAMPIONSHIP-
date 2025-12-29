@@ -1,30 +1,121 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Firebase Test</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Attendance</title>
+
+<style>
+body{
+  background:#020617;
+  color:#ffffff;
+  font-family:system-ui;
+  padding:20px;
+  margin:0;
+}
+.card{
+  background:#0b1220;
+  padding:20px;
+  border-radius:16px;
+  margin-bottom:20px;
+}
+h2{
+  margin-top:0;
+}
+input,button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  font-size:16px;
+  border-radius:12px;
+}
+input{
+  background:#020617;
+  border:1px solid #1e293b;
+  color:#fff;
+}
+button{
+  background:#22c55e;
+  border:none;
+  font-weight:700;
+}
+.row{
+  display:flex;
+  justify-content:space-between;
+  padding:10px 0;
+  border-bottom:1px solid #1e293b;
+}
+.rank{
+  color:#facc15;
+  font-weight:700;
+}
+</style>
 </head>
-<body style="background:#020617;color:white;font-family:system-ui;padding:20px">
-  <h2>🔥 Firebase GitHub Pages Test</h2>
-  <p id="msg">Testing Firebase…</p>
+
+<body>
+
+<div class="card">
+  <h2>🔥 Aura Attendance</h2>
+  <input id="name" placeholder="Enter your name">
+  <button onclick="markPresent()">✔ Present (+100 Aura)</button>
+</div>
+
+<div class="card">
+  <h2>🏆 Live Leaderboard</h2>
+  <div id="leader">Waiting for data…</div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+// 🔥 FIREBASE INIT
 firebase.initializeApp({
   apiKey: "AIzaSyC46iMoVc2QbVBel39ykA7NiC3ZKmXZd-4",
   databaseURL: "https://neet2026-bf3c6-default-rtdb.firebaseio.com"
 });
 
-firebase.database().ref("githubPagesTest").set({
-  status: "working",
-  time: new Date().toString()
-}).then(()=>{
-  document.getElementById("msg").innerText = "✅ Firebase WRITE WORKED on GitHub Pages";
-}).catch(e=>{
-  document.getElementById("msg").innerText = "❌ Firebase Error: " + e.message;
+const db = firebase.database();
+
+// MARK PRESENT
+function markPresent(){
+  const n = name.value.trim();
+  if(!n){
+    alert("Enter your name");
+    return;
+  }
+
+  db.ref("users/"+n).transaction(data=>{
+    if(!data){
+      data = { aura: 0 };
+    }
+    data.aura += 100;
+    return data;
+  });
+}
+
+// REAL-TIME LEADERBOARD
+db.ref("users").on("value", snap=>{
+  let arr = [];
+
+  snap.forEach(child=>{
+    arr.push({
+      name: child.key,
+      aura: child.val().aura || 0
+    });
+  });
+
+  arr.sort((a,b)=>b.aura - a.aura);
+
+  leader.innerHTML = arr.map((u,i)=>`
+    <div class="row">
+      <span class="rank">${i+1}.</span>
+      <span>${u.name}</span>
+      <span>${u.aura}</span>
+    </div>
+  `).join("");
 });
 </script>
+
 </body>
 </html>
